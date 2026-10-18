@@ -1,34 +1,49 @@
-# Federated Learning Backend
+# 🏥 Federated Learning Platform
 
-## About The Project
+### A Backend System for Collaborative AI in Healthcare
 
-This project is a backend system for a Federated Learning platform that allows multiple hospitals to participate in AI model training while maintaining a distributed healthcare environment.
+A Node.js and Express.js backend designed to support a Federated Learning platform for healthcare institutions, providing authentication, hospital management, AI-powered prediction services, and dashboard functionality.
 
-The system provides authentication, role-based access control, hospital management, prediction services, and dashboard APIs.
+The platform aims to support collaboration between hospitals while keeping hospital data management distributed.
 
-## Technologies Used
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-Backend-green?style=for-the-badge&logo=nodedotjs" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/Express.js-Framework-black?style=for-the-badge&logo=express" alt="Express.js"/>
+  <img src="https://img.shields.io/badge/MongoDB-Database-green?style=for-the-badge&logo=mongodb" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/JWT-Authentication-purple?style=for-the-badge&logo=jsonwebtokens" alt="JWT"/>
+</p>
 
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
-- JSON Web Token (JWT)
-- bcryptjs
-- Swagger
+---
 
-## Features
+## 🚀 Overview
 
-- User registration and login
-- JWT-based authentication
-- Role-based authorization for admin and users
-- Admin account management
-- Hospital management
-- Prediction management
-- Dashboard statistics and monitoring
-- RESTful API architecture
-- API documentation using Swagger
+Federated Learning enables multiple institutions to contribute to collaborative machine learning without requiring all their raw data to be centralized.
 
-## Project Structure
+This project provides backend APIs for managing users, hospitals, predictions, and dashboard data as part of a healthcare-oriented Federated Learning system.
+
+## ✨ Key Features
+
+- 🔐 **Authentication & Authorization** — User registration, login, JWT authentication, and role-based access control.
+- 👑 **Admin Management** — Administrative account creation and protected operations.
+- 🏥 **Hospital Management** — Manage hospital records and related information.
+- 🤖 **Prediction Services** — Backend endpoints for submitting prediction inputs and handling prediction results.
+- 📊 **Dashboard APIs** — Access dashboard data for monitoring and management.
+- 📚 **API Documentation** — Swagger-based API documentation.
+- 🗄️ **Database Integration** — MongoDB integration using Mongoose.
+
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Node.js | JavaScript runtime |
+| Express.js | REST API development |
+| MongoDB | Database |
+| Mongoose | Data modeling |
+| JWT | Authentication |
+| bcryptjs | Password hashing |
+| Swagger | API documentation |
+
+## 📁 Project Structure
 
 ```text
 Fedrated-Learning-pilot/
@@ -55,67 +70,80 @@ Fedrated-Learning-pilot/
 └── .env
 ```
 
-## Requirements
+## ⚙️ Getting Started
 
-- Node.js
-- npm
-- MongoDB
+### Prerequisites
 
-## Installation
+- Node.js and npm
+- MongoDB instance
+- Git
 
-1. Clone the repository:
+### Installation
+
+**1. Clone the repository**
 
 ```bash
 git clone <YOUR_REPOSITORY_URL>
-```
-
-2. Navigate to the project directory:
-
-```bash
 cd Fedrated-Learning-pilot
 ```
 
-3. Install dependencies:
+**2. Install dependencies**
 
 ```bash
 npm install
 ```
 
-4. Create a `.env` file in the root directory and configure the required environment variables.
+**3. Configure environment variables**
 
-Example:
+Create a `.env` file in the root directory:
 
 ```env
 PORT=3000
 MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_secure_jwt_secret
 ```
 
-Make sure the environment variable names match those used in your application.
+Use the exact variable names expected by the application.
 
-5. Start the server:
+**4. Start the server**
 
 ```bash
 npm start
 ```
 
-## API Documentation
+The server will run on the configured port.
 
-Swagger is used to document the available API endpoints.
+## 📡 API Modules
 
-After starting the server, open the Swagger documentation URL configured in `swagger.js`.
+| Module | Description |
+|---|---|
+| Authentication | Registration, login, and access control |
+| Hospitals | Hospital record management |
+| Predictions | Prediction request handling |
+| Dashboard | Dashboard data and monitoring |
 
-## Security
+For the exact endpoints and request schemas, refer to the Swagger configuration in `swagger.js`.
 
-- Passwords should be hashed before storage.
-- Protected routes require valid authentication.
-- Administrative operations should be restricted to authorized users.
-- Sensitive environment variables must not be committed to GitHub.
+## 🔒 Security Considerations
 
-## Project Goal
+- Hash passwords before storing them.
+- Protect private endpoints with authentication middleware.
+- Restrict administrative operations using role-based authorization.
+- Keep `.env` and other secrets out of version control.
+- Validate incoming request data.
 
-The goal of this project is to provide backend services for a Federated Learning platform that supports hospital management and AI-powered prediction workflows.
+## 🎯 Project Objective
 
-## Author
+To provide a structured backend foundation for a healthcare Federated Learning platform, connecting hospital management, prediction workflows, and administrative monitoring through RESTful APIs.
 
-Developed as part of a Federated Learning project.
+## 👨‍💻 Development
+
+This project follows a modular architecture that separates routes, controllers, models, and middleware to improve maintainability and simplify future development.
+
+---
+
+<p align="center">
+  <b>Built with Node.js, Express.js, and MongoDB</b>
+  <br/>
+  <i>Federated Learning • Healthcare • Backend Development</i>
+</p>
