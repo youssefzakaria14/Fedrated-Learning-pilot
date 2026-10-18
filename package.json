@@ -1,4 +1,3 @@
-
 {
   "name": "federated-learning-pilot",
   "version": "1.0.0",
@@ -13,6 +12,8 @@
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.2",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "validator": "^13.15.35"
   },
   "devDependencies": {

@@ -31,7 +31,7 @@ const predictionSchema = new mongoose.Schema(
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: false
         },
         hospital: {
             type: mongoose.Schema.Types.ObjectId,

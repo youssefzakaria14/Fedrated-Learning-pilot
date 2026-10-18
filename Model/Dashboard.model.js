@@ -1,18 +1,20 @@
 
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+
+const { Schema } = mongoose;
 
 const hospitalSchema = new Schema(
     {
         hospital: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: Schema.Types.ObjectId,
             ref: "Hospital",
             required: true
         },
         status: {
             type: String,
             enum: ["connected", "disconnected"],
-            default: "connected"
+            default: "disconnected",
+            required: true
         }
     },
     { _id: false }
@@ -23,7 +25,11 @@ const trainingCurveSchema = new Schema(
         round: {
             type: Number,
             required: true,
-            min: 1
+            min: 1,
+            validate: {
+                validator: Number.isInteger,
+                message: "Round must be an integer"
+            }
         },
         accuracy: {
             type: Number,
@@ -83,37 +89,87 @@ const dashboardSchema = new Schema(
         totalPatients: {
             type: Number,
             required: true,
-            min: 0
+            min: 0,
+            validate: {
+                validator: Number.isInteger,
+                message: "Total patients must be an integer"
+            }
         },
         participatingHospitals: {
             type: Number,
             required: true,
-            min: 0
+            min: 0,
+            validate: {
+                validator: Number.isInteger,
+                message: "Participating hospitals must be an integer"
+            }
         },
         globalAccuracy: {
             type: Number,
+            default: null,
             min: 0,
-            max: 100,
-            default: null
+            max: 100
         },
         currentRound: {
             type: Number,
             default: 0,
-            min: 0
+            min: 0,
+            validate: {
+                validator: Number.isInteger,
+                message: "Current round must be an integer"
+            }
         },
         totalRounds: {
             type: Number,
             default: 0,
-            min: 0
+            min: 0,
+            validate: {
+                validator: Number.isInteger,
+                message: "Total rounds must be an integer"
+            }
         },
-        hospitals: [hospitalSchema],
+        trainingStatus: {
+            type: String,
+            enum: ["idle", "training", "completed", "failed"],
+            default: "idle"
+        },
+        lastTrainingAt: {
+            type: Date,
+            default: null
+        },
+        hospitals: {
+            type: [hospitalSchema],
+            default: []
+        },
         trainingCurve: {
-            iid: [trainingCurveSchema],
-            nonIid: [trainingCurveSchema]
+            iid: {
+                type: [trainingCurveSchema],
+                default: []
+            },
+            nonIid: {
+                type: [trainingCurveSchema],
+                default: []
+            }
         },
-        evaluations: [evaluationSchema]
+        evaluations: {
+            type: [evaluationSchema],
+            default: []
+        }
     },
-    { timestamps: true }
+    {
+        timestamps: true
+    }
 );
+
+dashboardSchema.pre("validate", function (next) {
+    if (this.totalRounds > 0 && this.currentRound > this.totalRounds) {
+        this.invalidate(
+            "currentRound",
+            "Current round cannot exceed total rounds"
+        );
+    }
+
+    next();
+});
 
 module.exports = mongoose.model("Dashboard", dashboardSchema);

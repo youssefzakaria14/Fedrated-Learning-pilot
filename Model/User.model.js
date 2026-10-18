@@ -35,17 +35,13 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             enum: ["doctor", "admin"],
+            default: "doctor",
             required: true
         },
         hospital: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Hospital",
             required: true
-        },
-        status: {
-            type: String,
-            enum: ["pending", "active"],
-            default: "pending"
         },
         preferences: {
             theme: {
