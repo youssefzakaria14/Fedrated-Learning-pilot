@@ -4,12 +4,11 @@ const router = express.Router();
 
 const {
     createPrediction,
-    getAllPredictions
+    getAllPredictions,
+    getPredictionById
 } = require("../Controllers/Prediction.controller");
 
-const {
-    protect
-} = require("../Middleware/auth.middleware.js");
+const { protect } = require("../Middleware/auth.middleware.js");
 
 /**
  * @swagger
@@ -66,6 +65,35 @@ const {
  *         description: Server error
  */
 router.get("/", protect, getAllPredictions);
+
+/**
+ * @swagger
+ * /api/v1/predict/{id}:
+ *   get:
+ *     summary: Get prediction by ID
+ *     tags: [Prediction]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Prediction MongoDB ID
+ *     responses:
+ *       200:
+ *         description: Prediction retrieved successfully
+ *       400:
+ *         description: Invalid prediction ID
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Prediction not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/:id", protect, getPredictionById);
 
 /**
  * @swagger

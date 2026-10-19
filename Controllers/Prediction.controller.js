@@ -77,21 +77,18 @@ const createPrediction = async (req, res) => {
         const aiServiceUrl =
             process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
 
-        const aiResponse = await fetch(
-            `${aiServiceUrl}/predict`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    Age: age,
-                    Year: operationYear,
-                    Nodes: positiveNodes
-                }),
-                signal: AbortSignal.timeout(10000)
-            }
-        );
+        const aiResponse = await fetch(`${aiServiceUrl}/predict`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                Age: age,
+                Year: operationYear,
+                Nodes: positiveNodes
+            }),
+            signal: AbortSignal.timeout(10000)
+        });
 
         let result;
 
@@ -200,7 +197,67 @@ const getAllPredictions = async (req, res) => {
     }
 };
 
+const getPredictionById = async (req, res) => {
+    try {
+        if (!req.user || !["admin", "doctor"].includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not have permission to view predictions"
+            });
+        }
+
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid prediction ID"
+            });
+        }
+
+        const filter = { _id: id };
+
+        if (req.user.role === "doctor") {
+            const hospitalId =
+                req.user.hospital?._id || req.user.hospital;
+
+            if (!hospitalId) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Your account is not linked to a hospital"
+                });
+            }
+
+            filter.hospital = hospitalId;
+        }
+
+        const prediction = await Prediction.findOne(filter)
+            .populate("hospital", "name code participantNumber status")
+            .populate("createdBy", "name email role");
+
+        if (!prediction) {
+            return res.status(404).json({
+                success: false,
+                message: "Prediction not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: prediction
+        });
+    } catch (error) {
+        console.error("Get Prediction By ID Error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve prediction"
+        });
+    }
+};
+
 module.exports = {
     createPrediction,
-    getAllPredictions
+    getAllPredictions,
+    getPredictionById
 };

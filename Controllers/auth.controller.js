@@ -28,7 +28,7 @@ const register = async (req, res) => {
             medicalId,
             hospitalCode,
             role
-        } = req.body;
+        } = req.body || {};
 
         if (!name || !email || !password || !hospitalCode) {
             return res.status(400).json({
@@ -48,6 +48,21 @@ const register = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "Admin registration is not allowed here"
+            });
+        }
+
+        if (
+            typeof name !== "string" ||
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            typeof hospitalCode !== "string" ||
+            !name.trim() ||
+            !email.trim() ||
+            !hospitalCode.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide valid registration data"
             });
         }
 
@@ -72,7 +87,7 @@ const register = async (req, res) => {
         }
 
         const hospital = await Hospital.findOne({
-            code: hospitalCode,
+            code: hospitalCode.trim(),
             participantNumber: { $in: PARTICIPANT_NUMBERS }
         });
 
@@ -86,10 +101,10 @@ const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         const user = await User.create({
-            name,
+            name: name.trim(),
             email: normalizedEmail,
             password: hashedPassword,
-            medicalId,
+            medicalId: medicalId ? medicalId.trim() : undefined,
             role: "doctor",
             hospital: hospital._id,
             status: "active"
@@ -119,7 +134,25 @@ const register = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Register Error:", error.message);
+        console.error("Register Error:", error);
+
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern || {})[0];
+
+            return res.status(409).json({
+                success: false,
+                message: field === "medicalId"
+                    ? "Medical ID already registered"
+                    : "Email or another unique field is already registered"
+            });
+        }
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
 
         return res.status(500).json({
             success: false,
@@ -143,12 +176,27 @@ const createAdmin = async (req, res) => {
             password,
             medicalId,
             hospitalCode
-        } = req.body;
+        } = req.body || {};
 
         if (!name || !email || !password || !hospitalCode) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide name, email, password and hospitalCode"
+            });
+        }
+
+        if (
+            typeof name !== "string" ||
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            typeof hospitalCode !== "string" ||
+            !name.trim() ||
+            !email.trim() ||
+            !hospitalCode.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide valid registration data"
             });
         }
 
@@ -173,7 +221,7 @@ const createAdmin = async (req, res) => {
         }
 
         const hospital = await Hospital.findOne({
-            code: hospitalCode,
+            code: hospitalCode.trim(),
             participantNumber: { $in: PARTICIPANT_NUMBERS }
         });
 
@@ -187,10 +235,10 @@ const createAdmin = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         const admin = await User.create({
-            name,
+            name: name.trim(),
             email: normalizedEmail,
             password: hashedPassword,
-            medicalId,
+            medicalId: medicalId ? medicalId.trim() : undefined,
             role: "admin",
             hospital: hospital._id,
             status: "active"
@@ -203,13 +251,28 @@ const createAdmin = async (req, res) => {
                 _id: admin._id,
                 name: admin.name,
                 email: admin.email,
+                medicalId: admin.medicalId,
                 role: admin.role,
-                hospital: admin.hospital,
+                hospital: hospital._id,
                 status: admin.status
             }
         });
     } catch (error) {
-        console.error("Create Admin Error:", error.message);
+        console.error("Create Admin Error:", error);
+
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "Email or medical ID is already registered"
+            });
+        }
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
 
         return res.status(500).json({
             success: false,
@@ -220,9 +283,14 @@ const createAdmin = async (req, res) => {
 
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body || {};
 
-        if (!email || !password) {
+        if (
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            !email.trim() ||
+            !password
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide email and password"
@@ -278,7 +346,7 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Login Error:", error.message);
+        console.error("Login Error:", error);
 
         return res.status(500).json({
             success: false,
@@ -292,11 +360,20 @@ const getMe = async (req, res) => {
         const user = await User.findById(req.user._id)
             .populate("hospital", "name code participantNumber");
 
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
         return res.status(200).json({
             success: true,
             data: user
         });
     } catch (error) {
+        console.error("Get Me Error:", error);
+
         return res.status(500).json({
             success: false,
             message: "Failed to get user profile"
@@ -310,7 +387,7 @@ const updateMe = async (req, res) => {
         const updates = {};
 
         for (const field of allowedFields) {
-            if (req.body[field] !== undefined) {
+            if (req.body?.[field] !== undefined) {
                 updates[field] = req.body[field];
             }
         }
@@ -322,7 +399,16 @@ const updateMe = async (req, res) => {
                 new: true,
                 runValidators: true
             }
-        ).populate("hospital", "name code participantNumber");
+        )
+            .select("-password")
+            .populate("hospital", "name code participantNumber");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -330,7 +416,9 @@ const updateMe = async (req, res) => {
             data: user
         });
     } catch (error) {
-        return res.status(500).json({
+        console.error("Update Me Error:", error);
+
+        return res.status(400).json({
             success: false,
             message: "Failed to update profile"
         });
@@ -341,7 +429,9 @@ const getHospitals = async (req, res) => {
     try {
         const hospitals = await Hospital.find({
             participantNumber: { $in: PARTICIPANT_NUMBERS }
-        }).select("name code participantNumber status");
+        })
+            .select("name code participantNumber status")
+            .sort({ participantNumber: 1 });
 
         return res.status(200).json({
             success: true,
@@ -349,6 +439,8 @@ const getHospitals = async (req, res) => {
             data: hospitals
         });
     } catch (error) {
+        console.error("Get Hospitals Error:", error);
+
         return res.status(500).json({
             success: false,
             message: "Failed to retrieve hospitals"
