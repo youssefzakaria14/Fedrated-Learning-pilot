@@ -5,53 +5,35 @@ const hospitalSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            required: [true, "Hospital name is required"],
-            trim: true
+            required: true
         },
         code: {
             type: String,
-            required: [true, "Hospital code is required"],
-            unique: true,
-            trim: true
+            required: true,
+            unique: true
         },
         participantNumber: {
-            type: Number,
-            default: null,
-            unique: true,
-            sparse: true,
-            min: 1,
-            max: 3,
-            validate: {
-                validator: Number.isInteger,
-                message: "Participant number must be an integer"
-            }
+            type: String,
+            required: true
         },
         status: {
             type: String,
-            enum: ["connected", "disconnected"],
-            default: "disconnected"
+            required: true
         },
         patientCount: {
-            type: Number,
-            default: 0,
-            min: [0, "Patient count cannot be negative"]
+            type: String,
+            required: true
         },
         trainingStatus: {
             type: String,
-            enum: ["idle", "training", "completed", "failed"],
-            default: "idle"
+            required: true
         },
         currentRound: {
-            type: Number,
-            default: 0,
-            min: [0, "Current round cannot be negative"],
-            validate: {
-                validator: Number.isInteger,
-                message: "Current round must be an integer"
-            }
+            type: String,
+            required: true
         },
         lastTrainingAt: {
-            type: Date,
+            type: String,
             default: null
         }
     },

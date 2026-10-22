@@ -4,35 +4,35 @@ const mongoose = require("mongoose");
 const predictionSchema = new mongoose.Schema(
     {
         age: {
-            type: Number,
-            required: [true, "Age is required"],
-            min: [0, "Age cannot be negative"],
-            max: [120, "Age cannot exceed 120"]
+            type: String,
+            required: true
         },
+
         operationYear: {
-            type: Number,
-            required: [true, "Operation year is required"]
+            type: String,
+            required: true
         },
+
         positiveNodes: {
-            type: Number,
-            required: [true, "Positive nodes are required"],
-            min: [0, "Positive nodes cannot be negative"]
+            type: String,
+            required: true
         },
+
         outcome: {
             type: String,
-            enum: ["positive", "negative"],
-            required: [true, "Outcome is required"]
+            required: true
         },
+
         confidence: {
-            type: Number,
-            min: [0, "Confidence cannot be less than 0"],
-            max: [100, "Confidence cannot exceed 100"]
+            type: String,
+            required: true
         },
+
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: false
+            ref: "User"
         },
+
         hospital: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Hospital",
@@ -40,7 +40,8 @@ const predictionSchema = new mongoose.Schema(
         }
     },
     {
-        timestamps: true
+        timestamps: true,
+        collection: "predictions"
     }
 );
 

@@ -3,8 +3,60 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../Model/User.model");
 const Hospital = require("../Model/Hospital.model");
+const { decrypt } = require("../Utils/encryption");
 
-const PARTICIPANT_NUMBERS = [1, 2, 3];
+const HOSPITAL_FIELDS = [
+    "name",
+    "code",
+    "participantNumber",
+    "status",
+    "patientCount",
+    "trainingStatus",
+    "currentRound"
+];
+
+function decryptHospital(hospital) {
+    if (!hospital) return null;
+
+    const data = hospital.toObject
+        ? hospital.toObject()
+        : { ...hospital };
+
+    for (const field of HOSPITAL_FIELDS) {
+        if (data[field] !== undefined && data[field] !== null) {
+            data[field] = decrypt(data[field]);
+        }
+    }
+
+    for (const field of [
+        "participantNumber",
+        "patientCount",
+        "currentRound"
+    ]) {
+        if (data[field] !== undefined && data[field] !== null) {
+            data[field] = Number(data[field]);
+        }
+    }
+
+    return data;
+}
+
+async function findHospitalByCode(code) {
+    const hospitals = await Hospital.find({});
+
+    for (const hospital of hospitals) {
+        const decoded = decryptHospital(hospital);
+
+        if (decoded.code === code) {
+            return {
+                document: hospital,
+                data: decoded
+            };
+        }
+    }
+
+    return null;
+}
 
 const signToken = (user) => {
     return jwt.sign(
@@ -30,10 +82,19 @@ const register = async (req, res) => {
             role
         } = req.body || {};
 
-        if (!name || !email || !password || !hospitalCode) {
+        if (
+            typeof name !== "string" ||
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            typeof hospitalCode !== "string" ||
+            !name.trim() ||
+            !email.trim() ||
+            !password ||
+            !hospitalCode.trim()
+        ) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide name, email, password and hospitalCode"
+                message: "Please provide valid name, email, password and hospitalCode"
             });
         }
 
@@ -48,21 +109,6 @@ const register = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "Admin registration is not allowed here"
-            });
-        }
-
-        if (
-            typeof name !== "string" ||
-            typeof email !== "string" ||
-            typeof password !== "string" ||
-            typeof hospitalCode !== "string" ||
-            !name.trim() ||
-            !email.trim() ||
-            !hospitalCode.trim()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide valid registration data"
             });
         }
 
@@ -86,37 +132,30 @@ const register = async (req, res) => {
             });
         }
 
-        const hospital = await Hospital.findOne({
-            code: hospitalCode.trim(),
-            participantNumber: { $in: PARTICIPANT_NUMBERS }
-        });
+        const found = await findHospitalByCode(hospitalCode.trim());
 
-        if (!hospital) {
+        if (!found) {
             return res.status(404).json({
                 success: false,
-                message: "Training participant hospital not found"
+                message: "Hospital not found"
             });
         }
-
-        const hashedPassword = await bcrypt.hash(password, 12);
 
         const user = await User.create({
             name: name.trim(),
             email: normalizedEmail,
-            password: hashedPassword,
+            password: await bcrypt.hash(password, 12),
             medicalId: medicalId ? medicalId.trim() : undefined,
             role: "doctor",
-            hospital: hospital._id,
+            hospital: found.document._id,
             status: "active"
         });
-
-        const token = signToken(user);
 
         return res.status(201).json({
             success: true,
             message: "Doctor registered successfully",
             data: {
-                token,
+                token: signToken(user),
                 user: {
                     _id: user._id,
                     name: user.name,
@@ -124,10 +163,10 @@ const register = async (req, res) => {
                     medicalId: user.medicalId,
                     role: user.role,
                     hospital: {
-                        _id: hospital._id,
-                        name: hospital.name,
-                        code: hospital.code,
-                        participantNumber: hospital.participantNumber
+                        _id: found.document._id,
+                        name: found.data.name,
+                        code: found.data.code,
+                        participantNumber: found.data.participantNumber
                     },
                     status: user.status
                 }
@@ -137,13 +176,9 @@ const register = async (req, res) => {
         console.error("Register Error:", error);
 
         if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern || {})[0];
-
             return res.status(409).json({
                 success: false,
-                message: field === "medicalId"
-                    ? "Medical ID already registered"
-                    : "Email or another unique field is already registered"
+                message: "Email, medical ID or another unique field is already registered"
             });
         }
 
@@ -178,13 +213,6 @@ const createAdmin = async (req, res) => {
             hospitalCode
         } = req.body || {};
 
-        if (!name || !email || !password || !hospitalCode) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide name, email, password and hospitalCode"
-            });
-        }
-
         if (
             typeof name !== "string" ||
             typeof email !== "string" ||
@@ -192,11 +220,12 @@ const createAdmin = async (req, res) => {
             typeof hospitalCode !== "string" ||
             !name.trim() ||
             !email.trim() ||
+            !password ||
             !hospitalCode.trim()
         ) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide valid registration data"
+                message: "Please provide valid name, email, password and hospitalCode"
             });
         }
 
@@ -220,27 +249,22 @@ const createAdmin = async (req, res) => {
             });
         }
 
-        const hospital = await Hospital.findOne({
-            code: hospitalCode.trim(),
-            participantNumber: { $in: PARTICIPANT_NUMBERS }
-        });
+        const found = await findHospitalByCode(hospitalCode.trim());
 
-        if (!hospital) {
+        if (!found) {
             return res.status(404).json({
                 success: false,
-                message: "Training participant hospital not found"
+                message: "Hospital not found"
             });
         }
-
-        const hashedPassword = await bcrypt.hash(password, 12);
 
         const admin = await User.create({
             name: name.trim(),
             email: normalizedEmail,
-            password: hashedPassword,
+            password: await bcrypt.hash(password, 12),
             medicalId: medicalId ? medicalId.trim() : undefined,
             role: "admin",
-            hospital: hospital._id,
+            hospital: found.document._id,
             status: "active"
         });
 
@@ -253,7 +277,7 @@ const createAdmin = async (req, res) => {
                 email: admin.email,
                 medicalId: admin.medicalId,
                 role: admin.role,
-                hospital: hospital._id,
+                hospital: found.document._id,
                 status: admin.status
             }
         });
@@ -299,9 +323,7 @@ const login = async (req, res) => {
 
         const user = await User.findOne({
             email: email.trim().toLowerCase()
-        })
-            .select("+password")
-            .populate("hospital", "name code participantNumber");
+        }).select("+password");
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({
@@ -317,30 +339,27 @@ const login = async (req, res) => {
             });
         }
 
-        if (
-            !user.hospital ||
-            !PARTICIPANT_NUMBERS.includes(user.hospital.participantNumber)
-        ) {
+        const hospital = await Hospital.findById(user.hospital);
+
+        if (!hospital) {
             return res.status(403).json({
                 success: false,
-                message: "Your account is not linked to a valid training participant"
+                message: "Your account is not linked to a valid hospital"
             });
         }
-
-        const token = signToken(user);
 
         return res.status(200).json({
             success: true,
             message: "Login successful",
             data: {
-                token,
+                token: signToken(user),
                 user: {
                     _id: user._id,
                     name: user.name,
                     email: user.email,
                     medicalId: user.medicalId,
                     role: user.role,
-                    hospital: user.hospital,
+                    hospital: decryptHospital(hospital),
                     status: user.status
                 }
             }
@@ -357,8 +376,7 @@ const login = async (req, res) => {
 
 const getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
-            .populate("hospital", "name code participantNumber");
+        const user = await User.findById(req.user._id).select("-password");
 
         if (!user) {
             return res.status(404).json({
@@ -367,9 +385,14 @@ const getMe = async (req, res) => {
             });
         }
 
+        const data = user.toObject();
+        data.hospital = decryptHospital(
+            await Hospital.findById(user.hospital)
+        );
+
         return res.status(200).json({
             success: true,
-            data: user
+            data
         });
     } catch (error) {
         console.error("Get Me Error:", error);
@@ -383,10 +406,9 @@ const getMe = async (req, res) => {
 
 const updateMe = async (req, res) => {
     try {
-        const allowedFields = ["name", "preferences"];
         const updates = {};
 
-        for (const field of allowedFields) {
+        for (const field of ["name", "preferences"]) {
             if (req.body?.[field] !== undefined) {
                 updates[field] = req.body[field];
             }
@@ -399,9 +421,7 @@ const updateMe = async (req, res) => {
                 new: true,
                 runValidators: true
             }
-        )
-            .select("-password")
-            .populate("hospital", "name code participantNumber");
+        ).select("-password");
 
         if (!user) {
             return res.status(404).json({
@@ -410,10 +430,15 @@ const updateMe = async (req, res) => {
             });
         }
 
+        const data = user.toObject();
+        data.hospital = decryptHospital(
+            await Hospital.findById(user.hospital)
+        );
+
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully",
-            data: user
+            data
         });
     } catch (error) {
         console.error("Update Me Error:", error);
@@ -427,11 +452,12 @@ const updateMe = async (req, res) => {
 
 const getHospitals = async (req, res) => {
     try {
-        const hospitals = await Hospital.find({
-            participantNumber: { $in: PARTICIPANT_NUMBERS }
-        })
-            .select("name code participantNumber status")
-            .sort({ participantNumber: 1 });
+        const allHospitals = await Hospital.find({});
+        const hospitals = allHospitals.map(decryptHospital);
+
+        hospitals.sort((a, b) => {
+            return Number(a.participantNumber) - Number(b.participantNumber);
+        });
 
         return res.status(200).json({
             success: true,

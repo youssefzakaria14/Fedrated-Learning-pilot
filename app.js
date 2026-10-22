@@ -47,16 +47,32 @@ app.use((err, req, res, next) => {
     });
 });
 
+if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is missing from .env");
+}
+
+if (!/^[0-9a-fA-F]{64}$/.test(
+    process.env.PREDICTION_ENCRYPTION_KEY || ""
+)) {
+    throw new Error(
+        "PREDICTION_ENCRYPTION_KEY must be a 64-character hexadecimal key"
+    );
+}
+
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+    dbName: "federated_learning"
+})
     .then(() => {
         console.log("MongoDB Connected Successfully");
+        console.log("Database name:", mongoose.connection.name);
 
-        app.listen(PORT, () => {
+        app.listen(PORT, "0.0.0.0", () => {
             console.log(`Server running on port ${PORT}`);
         });
     })
     .catch((error) => {
         console.error("MongoDB Connection Failed:", error.message);
+        process.exitCode = 1;
     });

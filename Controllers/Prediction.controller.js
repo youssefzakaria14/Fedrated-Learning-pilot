@@ -2,11 +2,51 @@
 const mongoose = require("mongoose");
 const Prediction = require("../Model/Prediction.model");
 const Hospital = require("../Model/Hospital.model");
+const { encrypt, decrypt } = require("../Utils/encryption");
+
+const ENCRYPTED_FIELDS = [
+    "age",
+    "operationYear",
+    "positiveNodes",
+    "outcome",
+    "confidence"
+];
+
+function encryptPrediction(data) {
+    const encrypted = { ...data };
+
+    for (const field of ENCRYPTED_FIELDS) {
+        encrypted[field] = encrypt(data[field]);
+    }
+
+    return encrypted;
+}
+
+function decryptPrediction(prediction) {
+    if (!prediction) return null;
+
+    const data = prediction.toObject
+        ? prediction.toObject()
+        : { ...prediction };
+
+    for (const field of ENCRYPTED_FIELDS) {
+        if (data[field] !== undefined && data[field] !== null) {
+            data[field] = decrypt(data[field]);
+        }
+    }
+
+    return data;
+}
+
+function getHospitalId(user) {
+    return user?.hospital?._id || user?.hospital;
+}
 
 const createPrediction = async (req, res) => {
     try {
         const { age, operationYear, positiveNodes } = req.body || {};
 
+        // Validate input
         if (
             age == null ||
             operationYear == null ||
@@ -33,6 +73,7 @@ const createPrediction = async (req, res) => {
             });
         }
 
+        // Validate user
         if (!req.user || !["admin", "doctor"].includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
@@ -40,6 +81,7 @@ const createPrediction = async (req, res) => {
             });
         }
 
+        // Get hospital ID
         let hospitalId;
 
         if (req.user.role === "admin") {
@@ -52,43 +94,65 @@ const createPrediction = async (req, res) => {
                 });
             }
         } else {
-            hospitalId = req.user.hospital?._id || req.user.hospital;
+            hospitalId = getHospitalId(req.user);
 
-            if (!hospitalId) {
+            if (!hospitalId || !mongoose.isValidObjectId(hospitalId)) {
                 return res.status(403).json({
                     success: false,
-                    message: "Your account is not linked to a hospital"
+                    message: "Your account is not linked to a valid hospital"
                 });
             }
         }
 
-        const hospital = await Hospital.findOne({
-            _id: hospitalId,
-            participantNumber: { $in: [1, 2, 3] }
-        });
+        // Find hospital by ID first because participantNumber is encrypted
+        const hospital = await Hospital.findById(hospitalId);
 
         if (!hospital) {
+            return res.status(404).json({
+                success: false,
+                message: "Hospital not found"
+            });
+        }
+
+        // Decrypt participantNumber before validation
+        const participantNumber = Number(
+            decrypt(hospital.participantNumber)
+        );
+
+        if (![1, 2, 3].includes(participantNumber)) {
             return res.status(404).json({
                 success: false,
                 message: "Training participant hospital not found"
             });
         }
 
+        // Call AI service
         const aiServiceUrl =
-            process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
+            process.env.AI_SERVICE_URL || "http://127.0.0.1:8002";
 
-        const aiResponse = await fetch(`${aiServiceUrl}/predict`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                Age: age,
-                Year: operationYear,
-                Nodes: positiveNodes
-            }),
-            signal: AbortSignal.timeout(10000)
-        });
+        let aiResponse;
+
+        try {
+            aiResponse = await fetch(`${aiServiceUrl}/predict`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    Age: age,
+                    Year: operationYear,
+                    Nodes: positiveNodes
+                }),
+                signal: AbortSignal.timeout(30000)
+            });
+        } catch (error) {
+            console.error("AI Service Connection Error:", error.message);
+
+            return res.status(502).json({
+                success: false,
+                message: "Cannot connect to AI service"
+            });
+        }
 
         let result;
 
@@ -124,7 +188,8 @@ const createPrediction = async (req, res) => {
             });
         }
 
-        const prediction = await Prediction.create({
+        // Prepare prediction data
+        const predictionData = {
             age,
             operationYear,
             positiveNodes,
@@ -132,22 +197,30 @@ const createPrediction = async (req, res) => {
             confidence,
             hospital: hospital._id,
             createdBy: req.user._id
-        });
+        };
+
+        // Encrypt sensitive fields before saving
+        const prediction = await Prediction.create(
+            encryptPrediction(predictionData)
+        );
 
         return res.status(201).json({
             success: true,
             message: "Prediction created successfully",
             data: {
-                ...prediction.toObject(),
+                _id: prediction._id,
+                ...predictionData,
+                createdAt: prediction.createdAt,
+                updatedAt: prediction.updatedAt,
                 aiStatus: result.status
             }
         });
     } catch (error) {
-        console.error("Prediction Error:", error.message);
+        console.error("Prediction Error:", error);
 
         return res.status(500).json({
             success: false,
-            message: "Failed to create prediction. Check that the AI service is running."
+            message: error.message || "Internal Server Error"
         });
     }
 };
@@ -164,13 +237,12 @@ const getAllPredictions = async (req, res) => {
         const filter = {};
 
         if (req.user.role === "doctor") {
-            const hospitalId =
-                req.user.hospital?._id || req.user.hospital;
+            const hospitalId = getHospitalId(req.user);
 
-            if (!hospitalId) {
+            if (!hospitalId || !mongoose.isValidObjectId(hospitalId)) {
                 return res.status(403).json({
                     success: false,
-                    message: "Your account is not linked to a hospital"
+                    message: "Your account is not linked to a valid hospital"
                 });
             }
 
@@ -185,14 +257,14 @@ const getAllPredictions = async (req, res) => {
         return res.status(200).json({
             success: true,
             results: predictions.length,
-            data: predictions
+            data: predictions.map(decryptPrediction)
         });
     } catch (error) {
-        console.error("Get Predictions Error:", error.message);
+        console.error("Get Predictions Error:", error);
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve predictions"
+            message: error.message || "Failed to retrieve predictions"
         });
     }
 };
@@ -218,13 +290,12 @@ const getPredictionById = async (req, res) => {
         const filter = { _id: id };
 
         if (req.user.role === "doctor") {
-            const hospitalId =
-                req.user.hospital?._id || req.user.hospital;
+            const hospitalId = getHospitalId(req.user);
 
-            if (!hospitalId) {
+            if (!hospitalId || !mongoose.isValidObjectId(hospitalId)) {
                 return res.status(403).json({
                     success: false,
-                    message: "Your account is not linked to a hospital"
+                    message: "Your account is not linked to a valid hospital"
                 });
             }
 
@@ -244,14 +315,14 @@ const getPredictionById = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: prediction
+            data: decryptPrediction(prediction)
         });
     } catch (error) {
-        console.error("Get Prediction By ID Error:", error.message);
+        console.error("Get Prediction By ID Error:", error);
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve prediction"
+            message: error.message || "Failed to retrieve prediction"
         });
     }
 };

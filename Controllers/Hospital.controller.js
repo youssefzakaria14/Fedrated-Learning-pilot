@@ -1,10 +1,48 @@
+
 const mongoose = require("mongoose");
 const Hospital = require("../Model/Hospital.model");
+const { encrypt, decrypt } = require("../Utils/encryption");
 
 const AI_SERVICE_URL =
     process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
 
-const getAIDashboard = async () => {
+const ENCRYPTED_FIELDS = [
+    "name",
+    "code",
+    "participantNumber",
+    "status",
+    "patientCount",
+    "trainingStatus",
+    "currentRound"
+];
+
+function decryptHospital(hospital) {
+    if (!hospital) return null;
+
+    const data = hospital.toObject
+        ? hospital.toObject()
+        : { ...hospital };
+
+    for (const field of ENCRYPTED_FIELDS) {
+        if (data[field] !== undefined && data[field] !== null) {
+            data[field] = decrypt(data[field]);
+        }
+    }
+
+    for (const field of [
+        "participantNumber",
+        "patientCount",
+        "currentRound"
+    ]) {
+        if (data[field] !== undefined && data[field] !== null) {
+            data[field] = Number(data[field]);
+        }
+    }
+
+    return data;
+}
+
+async function getAIDashboard() {
     const response = await fetch(`${AI_SERVICE_URL}/dashboard`, {
         signal: AbortSignal.timeout(5000)
     });
@@ -20,22 +58,13 @@ const getAIDashboard = async () => {
     }
 
     return result.data;
-};
+}
 
-const syncHospitalParticipants = async (aiData) => {
+async function syncHospitalParticipants(aiData) {
     const participants = aiData.hospitalCounts;
 
-    if (!Array.isArray(participants) || participants.length !== 3) {
-        throw new Error("AI dashboard must return exactly 3 hospitals");
-    }
-
-    const numbers = participants.map((item) => Number(item.hospitalNumber));
-
-    if (
-        new Set(numbers).size !== 3 ||
-        ![1, 2, 3].every((number) => numbers.includes(number))
-    ) {
-        throw new Error("AI must return hospital numbers 1, 2 and 3");
+    if (!Array.isArray(participants)) {
+        throw new Error("AI hospitalCounts must be an array");
     }
 
     const currentRound = Number(aiData.currentRound) || 0;
@@ -46,40 +75,96 @@ const syncHospitalParticipants = async (aiData) => {
             ? "completed"
             : "idle";
 
+    // قراءة السجلات الموجودة وفك تشفيرها لمطابقتها بالمشاركين
+    const existingHospitals = await Hospital.find({});
+    const existingByNumber = new Map();
+
+    for (const hospital of existingHospitals) {
+        const decoded = decryptHospital(hospital);
+        const number = Number(decoded.participantNumber);
+
+        if (!Number.isFinite(number)) {
+            throw new Error(
+                `Invalid participantNumber in hospital ${hospital._id}`
+            );
+        }
+
+        if (existingByNumber.has(number)) {
+            throw new Error(
+                `Duplicate participantNumber found: ${number}`
+            );
+        }
+
+        existingByNumber.set(number, hospital);
+    }
+
+    const seenNumbers = new Set();
+    const syncedHospitals = [];
+
     for (const participant of participants) {
         const number = Number(participant.hospitalNumber);
         const patientCount = Number(participant.patientCount);
 
-        if (!Number.isInteger(patientCount) || patientCount < 0) {
-            throw new Error("Invalid patient count from AI");
+        if (
+            !Number.isSafeInteger(number) ||
+            number < 1 ||
+            seenNumbers.has(number)
+        ) {
+            throw new Error("AI returned an invalid or duplicate hospitalNumber");
         }
 
-        await Hospital.findOneAndUpdate(
-            { participantNumber: number },
-            {
-                $set: {
-                    name: `AI Training Participant ${number}`,
-                    code: `FL_HOSPITAL_${number}`,
-                    participantNumber: number,
-                    status: "connected",
-                    patientCount,
-                    trainingStatus,
-                    currentRound
+        if (
+            !Number.isSafeInteger(patientCount) ||
+            patientCount < 0
+        ) {
+            throw new Error("AI returned an invalid patientCount");
+        }
+
+        seenNumbers.add(number);
+
+        const plainData = {
+            name: `AI Training Participant ${number}`,
+            code: `FL_HOSPITAL_${number}`,
+            participantNumber: number,
+            status: "connected",
+            patientCount,
+            trainingStatus,
+            currentRound
+        };
+
+        const encryptedData = {};
+
+        for (const [field, value] of Object.entries(plainData)) {
+            encryptedData[field] = encrypt(value);
+        }
+
+        const existing = existingByNumber.get(number);
+        let savedHospital;
+
+        if (existing) {
+            savedHospital = await Hospital.findByIdAndUpdate(
+                existing._id,
+                { $set: encryptedData },
+                {
+                    new: true,
+                    runValidators: true
                 }
-            },
-            {
-                upsert: true,
-                new: true,
-                runValidators: true,
-                setDefaultsOnInsert: true
-            }
-        );
+            );
+        } else {
+            savedHospital = await Hospital.create(encryptedData);
+        }
+
+        if (!savedHospital) {
+            throw new Error(`Failed to sync participant ${number}`);
+        }
+
+        syncedHospitals.push(decryptHospital(savedHospital));
     }
 
-    return Hospital.find({
-        participantNumber: { $in: [1, 2, 3] }
-    }).sort({ participantNumber: 1 });
-};
+    return syncedHospitals.sort(
+        (a, b) => a.participantNumber - b.participantNumber
+    );
+}
 
 const getAllHospitals = async (req, res) => {
     try {
@@ -96,7 +181,7 @@ const getAllHospitals = async (req, res) => {
 
         return res.status(503).json({
             success: false,
-            message: "Failed to retrieve hospitals from AI service"
+            message: "Failed to sync hospitals from AI service"
         });
     }
 };
@@ -115,10 +200,7 @@ const getHospitalById = async (req, res) => {
         const aiData = await getAIDashboard();
         await syncHospitalParticipants(aiData);
 
-        const hospital = await Hospital.findOne({
-            _id: id,
-            participantNumber: { $in: [1, 2, 3] }
-        });
+        const hospital = await Hospital.findById(id);
 
         if (!hospital) {
             return res.status(404).json({
@@ -129,7 +211,7 @@ const getHospitalById = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: hospital
+            data: decryptHospital(hospital)
         });
     } catch (error) {
         console.error("Get Hospital By ID Error:", error.message);
