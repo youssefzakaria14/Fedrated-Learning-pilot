@@ -115,7 +115,7 @@ Fedrated-Learning-pilot/
 ### 1. Clone the Repository
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+git clone <https://github.com/youssefzakaria14/Fedrated-Learning-pilot>
 cd Fedrated-Learning-pilot
 ```
 
