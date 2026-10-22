@@ -1,49 +1,80 @@
-# 🏥 Federated Learning Platform
-
-### A Backend System for Collaborative AI in Healthcare
-
-A Node.js and Express.js backend designed to support a Federated Learning platform for healthcare institutions, providing authentication, hospital management, AI-powered prediction services, and dashboard functionality.
-
-The platform aims to support collaboration between hospitals while keeping hospital data management distributed.
+# 🏥 Federated Learning Healthcare Platform
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-Backend-green?style=for-the-badge&logo=nodedotjs" alt="Node.js"/>
-  <img src="https://img.shields.io/badge/Express.js-Framework-black?style=for-the-badge&logo=express" alt="Express.js"/>
-  <img src="https://img.shields.io/badge/MongoDB-Database-green?style=for-the-badge&logo=mongodb" alt="MongoDB"/>
-  <img src="https://img.shields.io/badge/JWT-Authentication-purple?style=for-the-badge&logo=jsonwebtokens" alt="JWT"/>
+  <img src="https://img.shields.io/badge/Healthcare-AI%20Platform-0D9488?style=for-the-badge&logo=heart&logoColor=white" alt="Healthcare AI"/>
+  <img src="https://img.shields.io/badge/Node.js-Backend-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/Express.js-REST%20API-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js"/>
+  <img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
+</p>
+
+<p align="center">
+  <b>A secure backend for collaborative healthcare AI.</b>
+  <br/>
+  Connecting hospital management, AI-powered predictions, and federated learning workflows through a modular REST API.
 </p>
 
 ---
 
-## 🚀 Overview
+## 🧠 About the Project
 
-Federated Learning enables multiple institutions to contribute to collaborative machine learning without requiring all their raw data to be centralized.
+The **Federated Learning Healthcare Platform** is a backend system designed to support collaboration between healthcare institutions through a centralized API layer and an AI-powered prediction service.
 
-This project provides backend APIs for managing users, hospitals, predictions, and dashboard data as part of a healthcare-oriented Federated Learning system.
+Federated Learning enables participating institutions to contribute to collaborative model training without requiring their raw training data to be pooled into one central dataset.
 
-## ✨ Key Features
+The backend provides authentication, hospital management, prediction processing, dashboard integration, and database protection to support the platform's healthcare workflows.
 
-- 🔐 **Authentication & Authorization** — User registration, login, JWT authentication, and role-based access control.
-- 👑 **Admin Management** — Administrative account creation and protected operations.
-- 🏥 **Hospital Management** — Manage hospital records and related information.
-- 🤖 **Prediction Services** — Backend endpoints for submitting prediction inputs and handling prediction results.
-- 📊 **Dashboard APIs** — Access dashboard data for monitoring and management.
-- 📚 **API Documentation** — Swagger-based API documentation.
-- 🗄️ **Database Integration** — MongoDB integration using Mongoose.
+## ✨ Core Features
 
-## 🛠️ Tech Stack
+| Feature | Description |
+|---|---|
+| 🔐 Authentication | User registration, login, JWT-based authentication, and protected routes |
+| 👥 Role-Based Access | Separate permissions for doctors and administrators |
+| 🏥 Hospital Management | Manage hospital records and participant information |
+| 🤖 AI Integration | Send prediction requests to the Python AI service and process its results |
+| 📊 Dashboard APIs | Retrieve training metrics, hospital information, and evaluation results |
+| 🔒 Data Encryption | Application-level encryption for selected sensitive hospital and prediction fields |
+| 📚 API Documentation | Explore and test endpoints through Swagger UI |
+| 🗄️ Database Integration | MongoDB Atlas integration using Mongoose |
 
-| Technology | Purpose |
+## 🏗️ System Architecture
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Client-Frontend-2563EB?style=flat-square" alt="Client"/>
+  <b> → </b>
+  <img src="https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=flat-square" alt="Backend"/>
+  <b> → </b>
+  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=flat-square" alt="Database"/>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/AI%20Service-Python%20%2B%20FastAPI-009688?style=flat-square" alt="AI Service"/>
+  <img src="https://img.shields.io/badge/Model-Federated%20Learning-7C3AED?style=flat-square" alt="Federated Learning"/>
+</p>
+
+**Request flow:**
+
+1. The client sends an authenticated request to the Express API.
+2. Middleware validates authentication, permissions, and request data.
+3. The backend reads or updates application data in MongoDB.
+4. For prediction requests, the backend communicates with the Python AI service.
+5. The API returns the appropriate result to the client.
+
+## 🛠️ Technology Stack
+
+| Technology | Role |
 |---|---|
 | Node.js | JavaScript runtime |
-| Express.js | REST API development |
-| MongoDB | Database |
-| Mongoose | Data modeling |
+| Express.js | REST API framework |
+| MongoDB Atlas | Cloud database |
+| Mongoose | Data modeling and database operations |
 | JWT | Authentication |
 | bcryptjs | Password hashing |
+| Python | AI service implementation |
+| FastAPI | AI service API |
 | Swagger | API documentation |
+| AES-256-GCM | Application-level encryption for selected fields |
 
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```text
 Fedrated-Learning-pilot/
@@ -64,10 +95,12 @@ Fedrated-Learning-pilot/
 │   ├── Dashboard.route.js
 │   ├── Hospital.route.js
 │   └── prediction.route.js
+├── Utils/
+│   └── encryption.js
 ├── app.js
 ├── swagger.js
 ├── package.json
-└── .env
+└── .env.example
 ```
 
 ## ⚙️ Getting Started
@@ -75,75 +108,102 @@ Fedrated-Learning-pilot/
 ### Prerequisites
 
 - Node.js and npm
-- MongoDB instance
+- A MongoDB database
+- Python environment for the AI service
 - Git
 
-### Installation
-
-**1. Clone the repository**
+### 1. Clone the Repository
 
 ```bash
 git clone <YOUR_REPOSITORY_URL>
 cd Fedrated-Learning-pilot
 ```
 
-**2. Install dependencies**
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-**3. Configure environment variables**
+### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the project root:
 
 ```env
 PORT=3000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_secure_jwt_secret
+AI_SERVICE_URL=http://127.0.0.1:8002
+PREDICTION_ENCRYPTION_KEY=your_64_character_hex_key
 ```
 
-Use the exact variable names expected by the application.
+Use the exact environment variable names and configuration required by your current code. Keep real credentials and encryption keys private. Never commit your actual `.env` file.
 
-**4. Start the server**
+### 4. Start the Backend
 
 ```bash
 npm start
 ```
 
-The server will run on the configured port.
+### 5. Start the AI Service
+
+Run the Python FastAPI service in its own environment and configure `AI_SERVICE_URL` to match its actual host and port.
+
+### 6. Open the API Documentation
+
+When the server is running, open:
+
+```text
+http://localhost:3000/api-docs
+```
+
+If you configured a different port, replace `3000` with that port.
 
 ## 📡 API Modules
 
-| Module | Description |
+| Module | Purpose |
 |---|---|
-| Authentication | Registration, login, and access control |
-| Hospitals | Hospital record management |
-| Predictions | Prediction request handling |
-| Dashboard | Dashboard data and monitoring |
+| Authentication | Registration, login, user identity, and access control |
+| Hospitals | Hospital records and participant management |
+| Predictions | Prediction requests and saved prediction results |
+| Dashboard | Hospital statistics and AI training metrics |
+| Swagger | Interactive API documentation |
 
-For the exact endpoints and request schemas, refer to the Swagger configuration in `swagger.js`.
+For the exact routes, request schemas, and response formats, refer to `swagger.js` and the route definitions.
 
-## 🔒 Security Considerations
+## 🔒 Security
 
-- Hash passwords before storing them.
-- Protect private endpoints with authentication middleware.
-- Restrict administrative operations using role-based authorization.
-- Keep `.env` and other secrets out of version control.
-- Validate incoming request data.
+Security is an important part of a healthcare-oriented system.
 
-## 🎯 Project Objective
+- **JWT authentication** protects private endpoints.
+- **Role-based authorization** separates doctor and administrator access.
+- **Password hashing** helps protect stored user credentials.
+- **Field-level encryption** protects selected sensitive values stored in MongoDB.
+- **Environment variables** keep database credentials and encryption keys outside source code.
+- **Input validation** helps reject invalid request data.
 
-To provide a structured backend foundation for a healthcare Federated Learning platform, connecting hospital management, prediction workflows, and administrative monitoring through RESTful APIs.
+> Encryption keys must be stored securely and separately from encrypted data. Field encryption is one layer of protection; it does not replace authentication, authorization, secure key management, or transport encryption.
 
-## 👨‍💻 Development
+## 🎯 Project Goals
 
-This project follows a modular architecture that separates routes, controllers, models, and middleware to improve maintainability and simplify future development.
+- Support collaboration between healthcare institutions.
+- Integrate AI-powered prediction workflows into a REST API.
+- Provide structured hospital and user management.
+- Protect selected sensitive database fields.
+- Make backend functionality accessible through documented endpoints.
+
+## 🚀 Future Improvements
+
+- Automated API testing and CI/CD.
+- More granular database permissions.
+- Improved audit logging for sensitive operations.
+- Production-ready secret and encryption-key management.
+- Expanded monitoring and error reporting.
 
 ---
 
 <p align="center">
-  <b>Built with Node.js, Express.js, and MongoDB</b>
+  <b>Built for Healthcare • AI • Secure Backend Engineering</b>
   <br/>
-  <i>Federated Learning • Healthcare • Backend Development</i>
+  <sub>Node.js · Express.js · MongoDB · Python · FastAPI</sub>
 </p>
