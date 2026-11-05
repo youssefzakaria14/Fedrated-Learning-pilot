@@ -24,7 +24,17 @@ function decryptHospital(hospital) {
 
     for (const field of HOSPITAL_FIELDS) {
         if (data[field] !== undefined && data[field] !== null) {
-            data[field] = decrypt(data[field]);
+            try {
+                data[field] = decrypt(data[field]);
+            } catch (error) {
+                console.error("Hospital Decryption Failed:", {
+                    field,
+                    hospitalId: data._id?.toString(),
+                    error: error.message
+                });
+
+                throw error;
+            }
         }
     }
 
@@ -482,3 +492,4 @@ module.exports = {
     updateMe,
     getHospitals
 };
+
