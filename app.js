@@ -62,7 +62,8 @@ if (!/^[0-9a-fA-F]{64}$/.test(
 const PORT = process.env.PORT || 3000;
 
 mongoose.connect(process.env.MONGO_URI, {
-    dbName: "federated_learning"
+    dbName: "federated_learning",
+     tls: true
 })
     .then(() => {
         console.log("MongoDB Connected Successfully");
